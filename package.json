@@ -1,0 +1,20 @@
+{
+  "name": "traza-omil",
+  "version": "0.1.0",
+  "description": "Traza OMIL — MVP del sistema de gestión y trazabilidad de la intermediación laboral (I. Municipalidad de Casablanca)",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22.5"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node lib/seed.js --reset",
+    "test": "node --test test/*.test.js",
+    "build:demo": "node web/build.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.2",
+    "sql.js": "^1.12.0"
+  }
+}
