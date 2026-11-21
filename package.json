@@ -8,7 +8,7 @@
     "node": ">=22.5"
   },
   "scripts": {
-    "start": "node server.js",
+    "start": "node --env-file-if-exists=.env server.js",
     "seed": "node lib/seed.js --reset",
     "test": "node --test test/*.test.js",
     "build:demo": "node web/build.mjs"

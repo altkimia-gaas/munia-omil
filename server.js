@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { openDb, q } from './lib/db.js';
 import { seedBase, seedDemo } from './lib/seed.js';
 import { tick, ReglaError } from './lib/engine.js';
+import { procesarCola } from './lib/mailer.js';
+import { resumenCorreo } from './lib/correo-config.js';
 import { publicRoutes } from './lib/routes-public.js';
 import { staffRoutes } from './lib/routes-staff.js';
 import { publicLayout, html } from './lib/views.js';
@@ -15,7 +17,8 @@ const DB = process.env.TRAZA_DB || fileURLToPath(new URL('./data/traza.db', impo
 const nuevo = !existsSync(DB);
 openDb(DB);
 seedBase();
-if (nuevo && process.env.TRAZA_DEMO !== '0') { seedDemo(); console.log('Escenario de demostración cargado.'); }
+const PRODUCCION = process.env.TRAZA_ENTORNO === 'produccion';
+if (nuevo && process.env.TRAZA_DEMO !== '0' && !PRODUCCION) { seedDemo(); console.log('Escenario de demostración cargado.'); }
 
 // ---------- sesiones (en memoria; en producción: almacén persistente) ----------
 const sessions = new Map();
@@ -90,5 +93,13 @@ const server = createServer(async (req, res) => {
 const runTick = () => { try { const r = tick(); if (Object.values(r).some(Boolean)) console.log('Temporizadores:', r); } catch (e) { console.error('tick', e); } };
 runTick();
 setInterval(runTick, 60_000).unref();
+
+// Cola de correo: cada 15 s y justo después de cada acción que pueda generar avisos
+const runCola = () => procesarCola().then((r) => { if (Object.values(r).some(Boolean)) console.log('Correo:', r); }).catch((e) => console.error('correo', e));
+setInterval(runCola, 15_000).unref();
+server.on('request', (req, res) => { if (req.method === 'POST') res.on('finish', () => setImmediate(runCola)); });
+const rc = resumenCorreo();
+console.log(`Correo de avisos: ${rc.modo} · entorno ${rc.entorno} · ${rc.destino}${rc.redirigirA ? ` · redirigido a ${rc.redirigirA}` : ''}`);
+rc.problemas.forEach((p) => console.warn(`  ⚠ ${p}`));
 
 server.listen(PORT, () => console.log(`Traza OMIL en http://localhost:${PORT}  (portal público: /  ·  funcionarios: /login)`));

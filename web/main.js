@@ -8,7 +8,7 @@ import { publicRoutes } from '../lib/routes-public.js';
 import { staffRoutes } from '../lib/routes-staff.js';
 import { publicLayout, html } from '../lib/views.js';
 
-const KEY = 'traza-omil-demo-v1';
+const KEY = 'traza-omil-demo-v2';
 const SKEY = 'traza-omil-sesion';
 const store = {
   get(k, s = localStorage) { try { return s.getItem(k); } catch { return null; } },

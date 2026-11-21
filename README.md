@@ -13,7 +13,7 @@ Requisito: Node.js 22.5 o superior (usa el SQLite integrado; el servidor **no ti
 
 ```bash
 npm start            # http://localhost:3000  — la primera vez carga un escenario de demostración
-npm test             # 13 pruebas de reglas y temporizadores con reloj simulado (prueba 9.7)
+npm test             # 21 pruebas: reglas y plazos con reloj simulado (9.7) + correo contra un SMTP de prueba
 npm run seed         # reinicia la base con el escenario de demostración
 ```
 
@@ -61,9 +61,43 @@ Para publicar una nueva versión: `npm run build:demo`, commit y push a `main`. 
 - **Reportería**: informe trimestral al Concejo (exportable), panel diario e indicadores 11.2.
 - **Datos**: exportación completa CSV/JSON, archivo de conciliación BNE, API pública `/api/ofertas.json`.
 
+## Correo de avisos
+
+Los avisos (A1–A4, E0–E4, T0) pasan por una **cola**: se registran como *En cola* dentro de la misma transacción
+que los genera y un despachador los envía cada 15 segundos (y justo después de cada acción), con reintentos a los
+1, 2, 5, 10, 20 y 30 minutos (≈ 1 hora, RN-04). Estados: **En cola → Enviado** (aceptado por el servidor de correo),
+**Rebotado** (destinatario rechazado, o aviso de no entrega registrado a mano), **Error de envío** (intentos agotados)
+y **Retenido** (salvaguarda de pruebas). Los con error o retenidos se reintentan desde *Avisos* o *Administración*.
+
+Configuración: copie `.env.ejemplo` como `.env` y reinicie (`npm start` lo carga solo). Tres modos:
+
+| `CORREO_MODO` | Uso |
+|---|---|
+| `simulado` (predeterminado) | No envía: bandeja interna. Demo y pruebas. |
+| `smtp` | Cuenta institucional (Microsoft 365 `smtp.office365.com:587` o Google Workspace `smtp.gmail.com:587` con contraseña de aplicación) o el relay del municipio. STARTTLS o TLS, autenticación PLAIN/LOGIN. |
+| `resend` | Servicio transaccional por API, con el dominio municipal verificado. Recomendado para el volumen anual (~20.000 avisos). |
+
+**Salvaguarda:** si `TRAZA_ENTORNO` no es `produccion`, *todo* aviso se desvía a `CORREO_REDIRIGIR_A` con el asunto
+`[PRUEBA → destinatario original]`; sin ese buzón, los avisos quedan *Retenidos* y no sale nada. En producción no se
+carga el escenario de demostración. Para probar: *Administración → Correo de avisos → Enviar correo de prueba*.
+
+**Límites de las cuentas de oficina:** Microsoft 365 permite unos 10.000 destinatarios al día y 30 mensajes por minuto
+por buzón; Google Workspace, unos 2.000 al día. Alcanzan para el uso diario de la OMIL (~80 avisos/día), pero un cierre
+masivo o el barrido inicial del stock conviene hacerlo con el servicio transaccional.
+
+### Lista de tareas para Informática (antes de producción)
+
+1. Crear la casilla remitente (ej. `omil@municipalidadcasablanca.cl`) y la de respuestas `omilpersonas@…`.
+2. **SPF**: incluir el servicio que envía en el registro TXT del dominio (ej. `include:spf.protection.outlook.com`).
+3. **DKIM**: activar la firma para el dominio en Microsoft 365 / Google Workspace, o publicar los registros que entregue Resend.
+4. **DMARC**: publicar `_dmarc.municipalidadcasablanca.cl` (partir en `p=none` con reportes y subir a `quarantine`).
+5. Si es SMTP de Microsoft 365: habilitar *SMTP AUTH* solo para la casilla remitente.
+6. Revisar periódicamente la casilla remitente: los avisos de no entrega que lleguen se marcan como *Rebotó* en *Avisos*.
+7. Guardar las claves solo en el `.env` del servidor (nunca en git) y rotarlas al egreso de quien las administre.
+
 ## Lo que el MVP simula y falta para producción
 
-- **Correo**: los avisos quedan en la bandeja de salida (`/app/avisos`); falta conectar el servicio masivo con SPF/DKIM/DMARC (`lib/notify.js → deliver`).
+- **Correo**: el envío real ya está implementado (ver *Correo de avisos*); falta la configuración DNS del dominio y las credenciales. Los rebotes que llegan después del envío se registran a mano (no se lee la casilla automáticamente).
 - **Autenticación**: el login es un selector de usuarios de demostración; falta cuenta institucional con doble factor.
 - **Firma**: declaraciones y actas usan firma simple; FirmaGob queda por evaluar.
 - **BNE**: solo exportación de conciliación; la integración depende de lo que habilite SENCE.
@@ -76,7 +110,9 @@ Para publicar una nueva versión: `npm run build:demo`, commit y push a `main`. 
 server.js              servidor HTTP y enrutador
 lib/db.js              esquema (modelo de datos 8.1) y triggers de bitácora
 lib/engine.js          núcleo: estados, reglas, temporizadores, probidad, muestra
-lib/notify.js          plantillas y envío de avisos
+lib/notify.js          plantillas, generación de avisos y cola
+lib/correo-config.js   configuración del correo (variables de entorno)
+lib/mailer.js          despacho real: SMTP y Resend, reintentos
 lib/audit.js           bitácora encadenada
 lib/clock.js           reloj (con desfase simulado) y días hábiles
 lib/reports.js         informe trimestral, panel e indicadores
