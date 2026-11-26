@@ -24,6 +24,7 @@ const out = await build({
 });
 const js = out.outputFiles[0].text;
 const css = readFileSync(resolve(root, 'public/style.css'), 'utf8');
+const appjs = readFileSync(resolve(root, 'public/app.js'), 'utf8');
 const wasm = readFileSync(resolve(root, 'node_modules/sql.js/dist/sql-wasm.wasm')).toString('base64');
 
 const page = `<!doctype html>
@@ -36,6 +37,7 @@ const page = `<!doctype html>
 <style>${css}</style></head>
 <body><div style="min-height:100vh;display:grid;place-items:center;color:#8B9DC3;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:2px">CARGANDO TRAZA OMIL…</div>
 <script>window.__SQL_WASM__="${wasm}";</script>
+<script>${appjs}</script>
 <script>${js.replace(/<\/script/gi, '<\\/script')}</script>
 </body></html>`;
 mkdirSync(resolve(root, 'docs'), { recursive: true });

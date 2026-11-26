@@ -53,3 +53,9 @@ export function randomBytes(n) {
   };
 }
 export const _sha256hex = sha256hex;
+
+// Funciones del acceso real: la demo web no las usa (entra con el selector de roles).
+const noDisponible = () => { throw new Error('No disponible en la demo web'); };
+export const scryptSync = noDisponible;
+export const createHmac = noDisponible;
+export const timingSafeEqual = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);

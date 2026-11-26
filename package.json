@@ -11,7 +11,9 @@
     "start": "node --env-file-if-exists=.env server.js",
     "seed": "node lib/seed.js --reset",
     "test": "node --test test/*.test.js",
-    "build:demo": "node web/build.mjs"
+    "build:demo": "node web/build.mjs",
+    "crear-admin": "node --env-file-if-exists=.env lib/admin-cli.js crear-admin",
+    "respaldo": "node --env-file-if-exists=.env lib/respaldo.js"
   },
   "devDependencies": {
     "esbuild": "^0.24.2",

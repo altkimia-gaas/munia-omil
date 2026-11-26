@@ -6,9 +6,10 @@ import { seedBase, seedDemo } from '../lib/seed.js';
 import { tick, ReglaError } from '../lib/engine.js';
 import { publicRoutes } from '../lib/routes-public.js';
 import { staffRoutes } from '../lib/routes-staff.js';
+import { ayudaRoutes } from '../lib/routes-ayuda.js';
 import { publicLayout, html } from '../lib/views.js';
 
-const KEY = 'traza-omil-demo-v2';
+const KEY = 'traza-omil-demo-v3';
 const SKEY = 'traza-omil-sesion';
 const store = {
   get(k, s = localStorage) { try { return s.getItem(k); } catch { return null; } },
@@ -33,6 +34,7 @@ const route = (method, pattern, handler) => {
 };
 publicRoutes(route);
 staffRoutes(route);
+ayudaRoutes(route);
 
 let current = '/';
 
@@ -71,6 +73,12 @@ async function handle(method, target, body = new URLSearchParams()) {
   const ctx = {
     url, sess, params: {}, body,
     user: sess.userId ? q.get('SELECT * FROM usuarios WHERE id=? AND activo=1', sess.userId) : null,
+    pendiente: null,
+    auth: {
+      iniciar(id) { sess.userId = id; },
+      completar() {},
+      cerrar() { delete sess.userId; },
+    },
     flash: sess.flash,
     send(status, out, type = 'text/html; charset=utf-8', headers = {}) {
       done = true;
@@ -115,7 +123,6 @@ const fromHash = () => {
 
 // ---------- interceptores ----------
 document.addEventListener('click', (e) => {
-  if (e.target.closest('[data-menu]')) { document.body.classList.toggle('menu-open'); return; }
   if (e.target.closest('[data-reset]')) {
     if (confirm('¿Reiniciar la demo? Se borran los cambios hechos en este navegador.')) { store.del(KEY); store.del(SKEY, sessionStorage); location.hash = ''; location.reload(); }
     return;
@@ -147,6 +154,7 @@ window.addEventListener('popstate', () => { const p = fromHash(); if (p) handle(
 async function start() {
   globalThis.process ??= { env: {}, argv: [] };
   process.env.TRAZA_URL = location.origin + location.pathname + '#';
+  process.env.TRAZA_WEB = '1';
   const SQL = await initSqlJs({ wasmBinary: fromB64(window.__SQL_WASM__) });
   useSqlJs(SQL);
   const saved = store.get(KEY);
